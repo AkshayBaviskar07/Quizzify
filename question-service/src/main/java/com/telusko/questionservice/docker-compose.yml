@@ -1,0 +1,38 @@
+version: "3.7"
+
+services:
+  quiz-db:
+    image: 'mysql'
+    container_name: quiz-db
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    environment:
+      - MYSQL_ROOT_PASSWORD=akshay
+      - MYSQL_DATABASE=quiz_db
+    networks:
+      - quiz-net
+    volumes:
+      - quiz-data:/var/lib/mysql
+
+  quiz-app:
+    build: ./
+    container_name: quiz-app
+    depends_on:
+      quiz-db:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://quiz-db:3306/quiz_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=akshay
+    networks:
+      - quiz-net
+
+networks:
+  quiz-net:
+
+volumes:
+  quiz-data:
