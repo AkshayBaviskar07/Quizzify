@@ -1,38 +1,100 @@
 version: "3.7"
 
 services:
-  quiz-db:
-    image: 'mysql'
-    container_name: quiz-db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-    environment:
-      - MYSQL_ROOT_PASSWORD=akshay
-      - MYSQL_DATABASE=quiz_db
-    networks:
-      - quiz-net
-    volumes:
-      - quiz-data:/var/lib/mysql
+ mysql:
+   image: 'mysql:latest'
+   container_name: 'quiz-db'
+   restart: always
+   environment:
+     - MYSQL_ROOT_PASSWORD=akshay
+   healthcheck:
+     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+     retries: 3
+     timeout: 10s
+   networks:
+     - quizzify-network
+   volumes:
+     - 'quizzify-data:/var/lib/mysql'
 
-  quiz-app:
-    build: ./
-    container_name: quiz-app
-    depends_on:
-      quiz-db:
-        condition: service_healthy
-    ports:
-      - 8080:8080
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://quiz-db:3306/quiz_db
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=akshay
-    networks:
-      - quiz-net
+
+ service-registry:
+   image: 'akshaybaviskar2804/service-registry:v1'
+   container_name: 'quizzify-service-registry'
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+     retries: 3
+     timeout: 10s
+     interval: 10s
+   ports:
+     - '8761:8761'
+   depends_on:
+     mysql:
+       condition: service_healthy
+     zipkin:
+       condition: service_healthy
+   networks:
+     - quizzify-network
+   restart: unless-stopped
+
+ question-service:
+   image: 'akshaybaviskar2804/question-service:v1'
+   container_name: 'quizzify-question-service'
+   ports:
+     - '8081:8081'
+   depends_on:
+     service-registry:
+       condition: service_completed_successfully
+     mysql:
+       condition: service_completed_successfully
+   environment:
+     - SPRING_PROFILES_ACTIVE=docker
+   networks:
+     - quizzify-network
+   restart: unless-stopped
+
+ quiz-service:
+   image: 'akshaybaviskar2804/quiz-service:v1'
+   container_name: 'quizzify-quiz-service'
+   ports:
+     - '8082:8082'
+   depends_on:
+     service-registry:
+       condition: service_completed_successfully
+     mysql:
+       condition: service_completed_successfully
+   environment:
+     - SPRING_PROFILES_ACTIVE=docker
+   networks:
+     - quizzify-network
+   restart: unless-stopped
+
+ api-gateway:
+   image: 'akshaybaviskar2804/api-gateway:v1'
+   container_name: 'quizzify-api-gateway'
+   ports:
+     - '8080:8080'
+   depends_on:
+     service-registry:
+       condition: service_completed_successfully
+   networks:
+     - quizzify-network
+   restart: unless-stopped
+
+ zipkin:
+   image: 'openzipkin/zipkin:latest'
+   container_name: 'quizzify-zipkin'
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:9411/zipkin/"]
+     retries: 3
+     timeout: 10s
+   ports:
+     - '9411:9411'
+   networks:
+     - quizzify-network
 
 networks:
-  quiz-net:
+  quizzify-network:
+    driver: bridge
 
 volumes:
-  quiz-data:
+  quizzify-data:
