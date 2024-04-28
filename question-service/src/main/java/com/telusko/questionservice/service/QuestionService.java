@@ -155,7 +155,6 @@ public class QuestionService {
 
         for(Response response : responses) {
             Question question = repo.findById(Long.valueOf(response.getId())).get();
-
             if(response.getResponse().equals(question.getRightAnswer())) {
                 result++;
             }
