@@ -25,12 +25,26 @@ public class QuizService {
     private QuizInterface quizInterface;
 
 
+    /**
+     * This method handles the fallback scenario for the question service.
+     * It returns a list with a single element "Dummy" when an exception occurs.
+     *
+     * @param e The exception that triggered the fallback
+     * @return A list containing "Dummy"
+     */
     private List<String> questionServiceFallBack(Exception e) {
         List<String> list = new LinkedList<>();
         list.add("Dummy");
         return list;
     }
 
+    /**
+     * This method creates a quiz with the given category, sets the number of questions and assigns title
+     * @param category The category of the quiz
+     * @param numQ The number of questions
+     * @param title The title of the quiz
+     * @return ResponseEntity with the success message and status code
+     */
     public ResponseEntity<String> createQuiz(String category, Long numQ, String title) {
         List<Long> questions = quizInterface.getQuestionsForQuiz(category, numQ).getBody();
         Quiz quiz = new Quiz();
@@ -41,6 +55,12 @@ public class QuizService {
         return new ResponseEntity<>("success", HttpStatus.CREATED);
     }
 
+    /**
+     * This method returns quiz by its Id or throws a Exception
+     * @param id The id of the quiz
+     * @return ResponseEntity with the quiz and status code'
+     * @throws QuizNotFoundException if the quiz is not found
+     */
     @RateLimiter(name = "questionService",
                 fallbackMethod = "questionServiceFallBack")
     public ResponseEntity<List<QuestionWrapper>> getQuizById(Integer id) {
@@ -56,11 +76,24 @@ public class QuizService {
         }
     }
 
-
+    /**
+     * This method returns the score of the quiz
+     * @param id The id of the quiz
+     * @param responses The list of responses of the quiz
+     * @return ResponseEntity with the score and status code
+     */
     public ResponseEntity<Integer> calculateResult(Integer id, List<Response> responses) {
         return quizInterface.getScore(responses);
     }
 
+    /**
+     * This method updates the quiz or throws exception if quiz not found
+     * @param quiz The updated quiz
+     * @return ResponseEntity with the success message and status code
+     * @throws QuizNotFoundException if the quiz is not found
+     */
+    @RateLimiter(name = "questionService",
+            fallbackMethod = "questionServiceFallBack")
     public ResponseEntity<String> updateQuiz(Quiz quiz) {
         Optional<Quiz> quizOptional = quizRepo.findById(quiz.getId());
 
@@ -72,6 +105,14 @@ public class QuizService {
         }
     }
 
+    /**
+     * This method deletes the quiz if found or throws Exception if quiz not found
+     * @param id The id of the quiz
+     * @return ResponseEntity with the success message and status code
+     * @throws QuizNotFoundException if the quiz is not found
+     */
+    @RateLimiter(name = "questionService",
+            fallbackMethod = "questionServiceFallBack")
     public ResponseEntity<String> deleteQuiz(Integer id) {
         Optional<Quiz> quizOptional = quizRepo.findById(id);
 
