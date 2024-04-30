@@ -103,4 +103,3 @@ These health checks can be used to determine whether the application is in a hea
 ### Additional Notes:
 
 - Consider using a database MySQL  for persistence in production.
-- Imple
